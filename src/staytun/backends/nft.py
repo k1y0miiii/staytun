@@ -64,7 +64,7 @@ class Nft(Backend):
         ):
             lines += _set(name, kind, sets[name])
         lines += [
-            "\tchain out {",
+            "\tchain guard_out {",
             "\t\ttype filter hook output priority 0; policy accept;",
             '\t\toifname "lo" accept',
             f'\t\toifname "{plan.iface}" accept',
@@ -72,7 +72,7 @@ class Nft(Backend):
             "\t\tudp sport 68 udp dport 67 accept",
             f'\t\tcounter drop comment "{COMMENT}"',
             "\t}",
-            "\tchain fwd {",
+            "\tchain guard_fwd {",
             "\t\ttype filter hook forward priority 0; policy accept;",
             f'\t\toifname "{plan.iface}" accept',
             "\t\tip daddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 100.64.0.0/10 } accept",
