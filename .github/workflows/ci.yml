@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/ruff-action@v3
+      - run: ruff format --check src tests scripts
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ["3.9", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install pytest
+      - run: pytest -q
+      - name: CLI запускается
+        run: PYTHONPATH=src python -m staytun --version && PYTHONPATH=src python -m staytun config
+
+  rules-pf:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: PYTHONPATH=src python3 scripts/render_sample.py /tmp/staytun en0
+      - name: pfctl принимает правила (только проверка, без загрузки)
+        run: sudo pfctl -nvf /tmp/staytun/pf.conf | tail -20
+
+  rules-nft:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq nftables
+      - run: PYTHONPATH=src python3 scripts/render_sample.py /tmp/staytun eth0
+      - name: nft принимает правила (только проверка, без загрузки)
+        run: sudo nft -c -f /tmp/staytun/staytun.nft

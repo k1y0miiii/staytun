@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "staytun"
+dynamic = ["version"]
+description = "VPN kill switch for macOS (pf) and Linux (nftables): not a single byte outside the tunnel"
+readme = "README.en.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = []
+keywords = ["vpn", "kill-switch", "pf", "nftables", "xray", "wireguard", "privacy"]
+classifiers = [
+    "Environment :: Console",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: System :: Networking :: Firewalls",
+]
+
+[project.scripts]
+staytun = "staytun.cli:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "staytun.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
