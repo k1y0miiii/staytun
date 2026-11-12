@@ -12,6 +12,7 @@ import glob
 import json
 import os
 import plistlib
+import re
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
@@ -148,15 +149,29 @@ class Happ(Client):
     """
 
     id, title = "happ", "Happ"
-    homes = ("/Applications/Happ.app", "~/Library/Preferences/Happ", "~/.config/Happ", "/opt/happ")
-    procs = ("Happ.app/Contents/MacOS/core/xray", "happ/core/xray")
+    homes = (
+        "/Applications/Happ.app",
+        "~/Library/Containers/su.ffg.happ.plus*",
+        "~/Library/Preferences/Happ",
+        "~/.config/Happ",
+        "/opt/happ",
+    )
+    procs = ("Happ.app/Contents/MacOS", "su.ffg.happ", "happ/core/")
+    # ядро и TUN (их запускает root-демон happd), App Store-версия — через PlugIns.
+    # Сам GUI сюда не входит: он ходит за подписками и обновлениями.
+    cores = (
+        r"(?i)happ[^/]*\.app/Contents/(MacOS/(core|tun2?)/|MacOS/happd$|PlugIns/)"
+        r"|su\.ffg\.happ|/happ[^/]*/(core|tun)/"
+    )
 
     def collect(self) -> Found:
         found = Found()
-        for pattern in self.procs:
-            found.live += process_remote_ips(pattern)
+        found.live = process_remote_ips(self.cores)
         if not found.live:
-            found.notes.append("сервер узнаем после подключения Happ: staytun sync")
+            hint = "сервер узнаем после подключения Happ: staytun sync"
+            if not sudo_cached():
+                hint += " (ядро Happ работает от root — без sudo его соединения не видны)"
+            found.notes.append(hint)
         found.geoip_file = _first(["/Applications/Happ.app/Contents/Resources/geoip.dat"])
         return found
 
@@ -195,8 +210,7 @@ class WireGuard(Client):
                 except OSError:
                     pass
         else:
-            for pattern in self.procs:
-                found.live += process_remote_ips(pattern)
+            found.live = process_remote_ips("|".join(re.escape(p) for p in self.procs))
         if not found.live and not found.servers:
             found.notes.append("endpoint узнаем, когда туннель поднят: staytun sync")
         return found

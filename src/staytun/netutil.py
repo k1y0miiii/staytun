@@ -8,6 +8,7 @@ import shutil
 import socket
 import subprocess
 from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
 from typing import Union
 
 Net = Union[ipaddress.IPv4Network, ipaddress.IPv6Network]
@@ -138,19 +139,59 @@ def pids(pattern: str) -> list[str]:
     return [p for p in out.split() if p.isdigit() and int(p) != os.getpid()]
 
 
-def process_remote_ips(pattern: str) -> list[str]:
-    """Внешние IP, к которым сейчас подключены процессы по шаблону (lsof, без сетевых запросов)."""
-    found = pids(pattern)
-    if not found or not shutil.which("lsof"):
-        return []
-    cmd = ["lsof", "-nP", "-i", "-a", "-p", ",".join(found), "-Fn"]
-    out = run(cmd).stdout
-    if not out and sudo_cached():
-        out = run(cmd, sudo=True).stdout
-    seen: list[str] = []
+@dataclass
+class Conn:
+    pid: str
+    path: str  # путь к исполняемому файлу (macOS) или командная строка (Linux)
+    local: str
+    remote: str
+
+
+def _endpoint_ip(endpoint: str) -> str:
+    return endpoint.rsplit(":", 1)[0].strip("[]").split("%")[0]
+
+
+def _process_paths() -> dict[str, str]:
+    out = run(["ps", "-axo", "pid=,comm="] if IS_MAC else ["ps", "-eo", "pid=,args="]).stdout
+    paths = {}
     for line in out.splitlines():
-        if line.startswith("n") and "->" in line:
-            host = line.split("->", 1)[1].rsplit(":", 1)[0].strip("[]")
-            if is_public(host) and host not in seen:
-                seen.append(host)
-    return seen
+        pid, _, path = line.strip().partition(" ")
+        paths[pid] = path.strip()
+    return paths
+
+
+def connections() -> list[Conn]:
+    """Все соединения системы с внешними адресами (lsof, пакеты не отправляются).
+
+    VPN-ядра часто работают от root (Happ — через демон happd), поэтому при
+    закэшированном sudo смотрим под ним, иначе чужие процессы не видны.
+    """
+    if not shutil.which("lsof"):
+        return []
+    cmd = ["lsof", "-nP", "-i", "-F", "pn"]
+    out = run(cmd, sudo=sudo_cached()).stdout
+    paths = _process_paths()
+    result, pid = [], ""
+    for line in out.splitlines():
+        if line.startswith("p"):
+            pid = line[1:]
+        elif line.startswith("n") and "->" in line:
+            local, remote = line[1:].split("->", 1)
+            remote_ip = _endpoint_ip(remote)
+            if is_public(remote_ip):
+                result.append(Conn(pid, paths.get(pid, ""), _endpoint_ip(local), remote_ip))
+    return result
+
+
+def process_remote_ips(path_regex: str) -> list[str]:
+    """Внешние IP, к которым подключены процессы, чей путь подходит под регулярку."""
+    pattern = re.compile(path_regex)
+    return list(dict.fromkeys(c.remote for c in connections() if pattern.search(c.path)))
+
+
+def iface_addrs(name: str) -> set[str]:
+    if IS_MAC:
+        out = run(["ifconfig", name]).stdout
+        return {a.split("%")[0] for a in re.findall(r"\binet6?\s+([0-9a-fA-F.:%\w]+)", out)}
+    out = run(["ip", "-o", "addr", "show", "dev", name]).stdout
+    return set(re.findall(r"\binet6?\s+([0-9a-fA-F.:]+)/", out))

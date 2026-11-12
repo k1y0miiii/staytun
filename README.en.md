@@ -56,7 +56,7 @@ Turn off: `staytun off`. Check status: `staytun status`.
 | **V2Box** | macOS | servers, direct rules (geoip, IP), geoip.dat |
 | **v2RayTun** | macOS | all servers from profiles and subscriptions, direct rules |
 | **Streisand** | macOS | all servers from profiles |
-| **Happ** | macOS | server — from the live connection (`staytun sync`) |
+| **Happ** | macOS | server — from the core's live connection (incl. root `happd` daemon and App Store build) |
 | **Hiddify** | macOS, Linux | servers and direct rules from config (experimental) |
 | **WireGuard / AmneziaWG** | macOS, Linux | endpoint — from the live connection; on Linux also from `/etc/wireguard` |
 | **Anything else** | macOS, Linux | manual mode: tunnel is auto-detected, servers via `staytun allow add` |
@@ -188,6 +188,11 @@ One-off: `staytun run claude` — launches only if protection is active.
 Your VPN isn't connected right now, or it reconnected under a different tunnel name. Connect the VPN and run
 `staytun on` again. Emergency off: `staytun off`. A reboot also resets everything.
 
+**`staytun on` refuses: "VPN talks to its server outside the tunnel".**
+That's the safety net for the case above. Before enabling, staytun checks where your VPN client connects
+outside the tunnel. If none of those addresses are in exceptions, the VPN server is unknown and protection
+would cut the VPN itself. Make sure the listed IPs are your VPN server and run `staytun on --auto` to remember them.
+
 **Local sites in my country won't open.**
 staytun only lets through what your client routes direct *by IP*. Domain-based rules
 (`geosite:category-ru`) can't be checked by a firewall — such sites hosted on foreign CDNs will be blocked.
@@ -199,7 +204,8 @@ all subscription servers upfront: `staytun allow add ...`.
 
 **Happ / WireGuard: "server not found".**
 Their servers are only visible while the connection is live. Connect and run `staytun sync`.
-staytun will remember the address for next time.
+staytun will remember the address for next time. Happ's core runs as root (via the `happd` daemon), so
+`staytun doctor` without sudo can't see it — `staytun on` and `staytun sync` look under sudo.
 
 **Does protection survive a reboot?**
 No — by design, so staytun can never leave you permanently offline.

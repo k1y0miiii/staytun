@@ -48,11 +48,45 @@ def _short(items: list[str], limit: int = 6) -> str:
     return ", ".join(items[:limit]) + (f" и ещё {len(items) - limit}" if len(items) > limit else "")
 
 
+def _orphans(plan: plan_mod.Plan) -> list[plan_mod.Bypass]:
+    """VPN-процессы, у которых ни одно соединение мимо туннеля не разрешено планом."""
+    report = plan_mod.bypass_report(plan)
+    for entry in report:
+        if entry.covered and entry.uncovered:
+            count = len(entry.uncovered)
+            info(f"{entry.name}: {count} прямых соединений клиента будут отрезаны (сервер в исключениях)")
+    return [e for e in report if e.uncovered and not e.covered]
+
+
+def _preflight(plan: plan_mod.Plan, auto: bool) -> None:
+    """Не даём включить защиту, которая отрежет сам VPN: иначе пропадёт вся сеть."""
+    if not shutil.which("lsof"):
+        warn("lsof не найден — не могу проверить, не отрежет ли защита сам VPN")
+        return
+    orphans = _orphans(plan)
+    if not orphans:
+        return
+    ips = [ip for entry in orphans for ip in entry.uncovered]
+    if auto:
+        config.remember_live(ips)
+        info(f"запомнил серверы VPN: {_short(ips)}")
+        return
+    listing = "\n".join(f"    {e.name}: {', '.join(e.uncovered)}" for e in orphans)
+    raise Fail(
+        "VPN ходит к своему серверу мимо туннеля, а этого адреса нет в исключениях —\n"
+        "после включения VPN отвалится и пропадёт весь интернет. Ничего не применено.\n"
+        f"{listing}\n"
+        "  Если это сервер твоего VPN:  staytun on --auto   (запомнит эти адреса)\n"
+        "  или вручную:                 staytun allow add <IP>"
+    )
+
+
 def cmd_on(args) -> int:
     _no_root()
     cfg = config.load()
     plan_mod.pick_iface(cfg, args.interface)  # ранняя проверка до пароля
     _sudo_prompt()
+    _preflight(plan_mod.build(cfg, args.interface, strict=False), args.auto)
     plan = plan_mod.build(cfg, args.interface)
     for message in plan.warnings:
         warn(message)
@@ -174,9 +208,23 @@ def cmd_doctor(args) -> int:
     row("защита", green("ВКЛ") if backends.read_state() else red("ВЫКЛ"))
     for message in plan.warnings:
         warn(message)
-    ready = bool(plan.iface and plan.allow)
+
+    orphans = _orphans(plan) if plan.iface else []
+    for entry in orphans:
+        warn(f"{entry.name} ходит мимо туннеля к {', '.join(entry.uncovered)} — этого нет в исключениях")
+    if orphans:
+        warn("включение отрезало бы сам VPN. Если это его сервер: staytun on --auto")
+    if plan.iface and not sudo_cached():
+        warn("без sudo видны не все процессы (Happ работает от root) — точная проверка будет при staytun on")
+
+    ready = bool(plan.iface and (plan.allow or orphans))
     print()
-    print(green("Готово к включению: staytun on") if ready else yellow("Пока включать рано — см. предупреждения выше"))
+    if ready and orphans:
+        print(yellow("Включать так: staytun on --auto"))
+    elif ready:
+        print(green("Готово к включению: staytun on"))
+    else:
+        print(yellow("Пока включать рано — см. предупреждения выше"))
     return 0 if ready else 1
 
 
@@ -301,6 +349,7 @@ def parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("on", help="включить защиту")
     s.add_argument("-i", "--interface", help="туннель вручную (по умолчанию — куда идёт интернет)")
+    s.add_argument("--auto", action="store_true", help="запомнить серверы VPN из его живых соединений")
     s.set_defaults(func=cmd_on)
     sub.add_parser("off", help="выключить защиту").set_defaults(func=cmd_off)
     sub.add_parser("status", help="состояние (спросит sudo)").set_defaults(func=cmd_status)

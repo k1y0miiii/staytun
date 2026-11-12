@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import ipaddress
+import os
+import re
 from dataclasses import dataclass, field
 
 from staytun import clients as clients_mod
@@ -14,7 +16,9 @@ from staytun.netutil import (
     LINK6,
     Net,
     collapse,
+    connections,
     default_iface,
+    iface_addrs,
     iface_exists,
     is_tunnel,
     parse_net,
@@ -175,6 +179,49 @@ def build(cfg: config_mod.Config, iface: str | None = None, strict: bool = True)
         reports=reports,
         warnings=warnings,
     )
+
+
+VPN_PROCESS = re.compile(
+    r"(?i)xray|v2ray|sing-?box|hysteria|tuic|wireguard|amnezia|openvpn|happ|v2box|v2raytun|streisand|hiddify"
+    r"|nekoray|nekobox|clash|mihomo|outline|shadowsocks|PacketTunnel|network-?extension|\.appex/"
+)
+
+
+@dataclass
+class Bypass:
+    """Соединения VPN-процесса мимо туннеля: covered — разрешены планом, uncovered — будут отрезаны."""
+
+    path: str
+    covered: list[str] = field(default_factory=list)
+    uncovered: list[str] = field(default_factory=list)
+
+    @property
+    def name(self) -> str:
+        match = re.search(r"([^/]+)\.app/", self.path)
+        return match.group(1) if match else os.path.basename(self.path.split(" ")[0]) or self.path
+
+
+def bypass_report(plan: Plan) -> list[Bypass]:
+    """Кто из VPN-процессов ходит в сеть мимо туннеля и что из этого план пропустит.
+
+    Если у процесса ни одно такое соединение не разрешено, это почти наверняка его
+    сервер, которого нет в исключениях: после включения туннель умрёт вместе с сетью.
+    """
+    tunnel_addrs = iface_addrs(plan.iface)
+    allowed = plan.allow + plan.lan + [n for n, _ in plan.ported]
+    report: dict[str, Bypass] = {}
+    for conn in connections():
+        if conn.local in tunnel_addrs or not VPN_PROCESS.search(conn.path):
+            continue
+        addr = ipaddress.ip_address(conn.remote)
+        entry = report.setdefault(conn.path, Bypass(conn.path))
+        ok = any(addr in n for n in allowed if n.version == addr.version) or any(
+            addr in n for n in plan.direct if n.version == addr.version
+        )
+        bucket = entry.covered if ok else entry.uncovered
+        if conn.remote not in bucket:
+            bucket.append(conn.remote)
+    return list(report.values())
 
 
 def parse_entry(value: str) -> bool:
