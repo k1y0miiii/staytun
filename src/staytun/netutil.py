@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import ipaddress
 import os
 import platform
@@ -9,9 +7,8 @@ import socket
 import subprocess
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Union
 
-Net = Union[ipaddress.IPv4Network, ipaddress.IPv6Network]
+type Net = ipaddress.IPv4Network | ipaddress.IPv6Network
 
 IS_MAC = platform.system() == "Darwin"
 IS_LINUX = platform.system() == "Linux"
@@ -59,7 +56,7 @@ def parse_net(value: str) -> Net | None:
 def resolve(host: str) -> list[Net]:
     try:
         infos = socket.getaddrinfo(host, None, proto=socket.IPPROTO_TCP)
-    except (OSError, UnicodeError):
+    except OSError, UnicodeError:
         return []
     return [ipaddress.ip_network(info[4][0]) for info in infos]
 

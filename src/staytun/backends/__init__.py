@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import json
 import os
 
@@ -58,7 +56,7 @@ def read_state() -> dict:
     try:
         with open(STATE_FILE) as fh:
             return json.load(fh)
-    except (OSError, ValueError):
+    except OSError, ValueError:
         return {}
 
 

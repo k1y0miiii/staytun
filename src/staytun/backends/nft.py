@@ -4,8 +4,6 @@
 без conntrack-исключений, поэтому старые соединения после падения VPN тоже режутся.
 """
 
-from __future__ import annotations
-
 import tempfile
 
 from staytun.backends import Backend, sudo_or_fail

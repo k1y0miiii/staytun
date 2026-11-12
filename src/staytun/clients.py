@@ -6,8 +6,6 @@
 процесс не ходит напрямую никуда, кроме своего сервера (WireGuard, Happ без direct).
 """
 
-from __future__ import annotations
-
 import glob
 import json
 import os
@@ -45,7 +43,7 @@ def _json(path: str):
     try:
         with open(path, encoding="utf-8") as fh:
             return json.load(fh)
-    except (OSError, ValueError):
+    except OSError, ValueError:
         return None
 
 
@@ -99,7 +97,7 @@ class XrayClient(Client):
             try:
                 with open(path, "rb") as fh:
                     return plistlib.load(fh)
-            except (OSError, plistlib.InvalidFileException, ValueError):
+            except OSError, plistlib.InvalidFileException, ValueError:
                 return None
         return _json(path)
 

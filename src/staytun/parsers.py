@@ -1,7 +1,5 @@
 """Разбор конфигов xray, sing-box и WireGuard: адреса серверов и direct-правила."""
 
-from __future__ import annotations
-
 import base64
 import json
 import re
@@ -50,7 +48,7 @@ def uri_hosts(text: str) -> list[str]:
                 blob = rest.split("#", 1)[0]
                 data = json.loads(base64.b64decode(blob + "=" * (-len(blob) % 4)))
                 hosts.append(str(data.get("add", "")))
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 pass
             continue
         authority = rest.split("@", 1)[-1]

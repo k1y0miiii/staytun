@@ -1,7 +1,5 @@
 """Сборка плана: какой туннель и какие адреса пускать мимо него."""
 
-from __future__ import annotations
-
 import ipaddress
 import os
 import re

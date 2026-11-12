@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "VPN kill switch for macOS (pf) and Linux (nftables): not a single byte outside the tunnel"
 readme = "README.en.md"
 license = { text = "MIT" }
-requires-python = ">=3.9"
+requires-python = ">=3.14"
 dependencies = []
 keywords = ["vpn", "kill-switch", "pf", "nftables", "xray", "wireguard", "privacy"]
 classifiers = [
@@ -16,6 +16,7 @@ classifiers = [
     "Operating System :: MacOS",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.14",
     "Topic :: System :: Networking :: Firewalls",
 ]
 
@@ -34,7 +35,7 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 120
-target-version = "py39"
+target-version = "py314"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B"]

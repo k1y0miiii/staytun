@@ -47,7 +47,7 @@ Turn off: `staytun off`. Check status: `staytun status`.
 - **Knows all your servers**, not just the current one: switch locations freely, protection won't get in the way.
 - **Refuses to launch** Claude Code, Cursor and other CLIs without protection (optional).
 - **Breaks nothing**: rules last until reboot or `staytun off`, and the stock macOS firewall is restored exactly as it was.
-- Zero dependencies besides python3. staytun itself never touches the network — it only resolves server domains via DNS.
+- Zero third-party libraries — just the Python 3.14 standard library. staytun itself never touches the network — it only resolves server domains via DNS.
 
 ## Supported VPN clients
 
@@ -67,7 +67,8 @@ Client not listed? Manual mode works (see below), and you can add an adapter (se
 
 **Requirements**
 - macOS 12+ or Linux with nftables (Ubuntu 20.04+, Debian 11+, Fedora, Arch).
-- python3 3.9+. On macOS you get it with `xcode-select --install`.
+- Python 3.14. You don't need to install it yourself: the installer fetches it via [uv](https://docs.astral.sh/uv)
+  into its own folder, leaving system Python and Homebrew untouched.
 
 **One-liner** (installs to `~/.local/bin`, no sudo):
 
@@ -81,11 +82,13 @@ curl -fsSL https://raw.githubusercontent.com/k1y0miiii/staytun/main/install.sh |
 git clone https://github.com/k1y0miiii/staytun && cd staytun && ./install.sh
 ```
 
-**With pipx:**
+**If you already have uv:**
 
 ```sh
-pipx install git+https://github.com/k1y0miiii/staytun
+uv tool install --python 3.14 git+https://github.com/k1y0miiii/staytun
 ```
+
+To update, just run the install command again.
 
 ## Usage
 

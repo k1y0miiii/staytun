@@ -18,23 +18,27 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        python: ["3.9", "3.12"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v6
         with:
-          python-version: ${{ matrix.python }}
-      - run: pip install pytest
-      - run: pytest -q
-      - name: CLI запускается
-        run: PYTHONPATH=src python -m staytun --version && PYTHONPATH=src python -m staytun config
+          python-version: "3.14"
+      - run: uv run --with pytest pytest -q
+      - name: пакет собирается и запускается
+        run: |
+          uv build -o dist
+          uvx --from dist/*.whl staytun --version
+          uvx --from dist/*.whl staytun config
 
   rules-pf:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - run: PYTHONPATH=src python3 scripts/render_sample.py /tmp/staytun en0
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.14"
+      - run: PYTHONPATH=src uv run --no-project python scripts/render_sample.py /tmp/staytun en0
       - name: pfctl принимает правила (только проверка, без загрузки)
         run: sudo pfctl -nvf /tmp/staytun/pf.conf | tail -20
 
@@ -42,7 +46,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.14"
       - run: sudo apt-get update -qq && sudo apt-get install -y -qq nftables
-      - run: PYTHONPATH=src python3 scripts/render_sample.py /tmp/staytun eth0
+      - run: PYTHONPATH=src uv run --no-project python scripts/render_sample.py /tmp/staytun eth0
       - name: nft принимает правила (только проверка, без загрузки)
         run: sudo nft -c -f /tmp/staytun/staytun.nft

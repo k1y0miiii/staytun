@@ -47,7 +47,7 @@ curl -fsSL https://raw.githubusercontent.com/k1y0miiii/staytun/main/install.sh |
 - **Знает все твои серверы**, а не только текущий: переключаешься между локациями — защита не мешает.
 - **Не даёт запустить** Claude Code, Cursor и другие CLI без защиты (по желанию).
 - **Ничего не ломает**: правила живут до перезагрузки или `staytun off`, штатный фаервол macOS возвращается как был.
-- Ни одной зависимости, кроме python3. Сам staytun в сеть не ходит — только резолвит домены серверов через DNS.
+- Ни одной сторонней библиотеки — только стандартный Python 3.14. Сам staytun в сеть не ходит — только резолвит домены серверов через DNS.
 
 ## Поддерживаемые VPN-клиенты
 
@@ -67,7 +67,8 @@ curl -fsSL https://raw.githubusercontent.com/k1y0miiii/staytun/main/install.sh |
 
 **Требования**
 - macOS 12+ или Linux с nftables (Ubuntu 20.04+, Debian 11+, Fedora, Arch).
-- python3 версии 3.9+. На macOS он появляется после `xcode-select --install`.
+- Python 3.14. Ставить его самому не нужно: установщик принесёт его через [uv](https://docs.astral.sh/uv)
+  в отдельную папку, системный Python и Homebrew не затрагиваются.
 
 **Одной командой** (ставит в `~/.local/bin`, без sudo):
 
@@ -81,11 +82,13 @@ curl -fsSL https://raw.githubusercontent.com/k1y0miiii/staytun/main/install.sh |
 git clone https://github.com/k1y0miiii/staytun && cd staytun && ./install.sh
 ```
 
-**Через pipx:**
+**Если uv уже стоит:**
 
 ```sh
-pipx install git+https://github.com/k1y0miiii/staytun
+uv tool install --python 3.14 git+https://github.com/k1y0miiii/staytun
 ```
+
+Обновление — та же команда установки ещё раз.
 
 ## Как пользоваться
 

@@ -5,8 +5,6 @@ GeoIP     { string country_code = 1; repeated CIDR cidr = 2; bool reverse_match 
 CIDR      { bytes ip = 1; uint32 prefix = 2; }
 """
 
-from __future__ import annotations
-
 import hashlib
 import ipaddress
 import os

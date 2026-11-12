@@ -6,8 +6,6 @@
 - pf включаем через токен (-E/-X), а не -e/-d, чтобы не сломать другим их pf.
 """
 
-from __future__ import annotations
-
 import re
 import tempfile
 
